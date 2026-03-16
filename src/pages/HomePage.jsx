@@ -1,111 +1,129 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Button from '../components/Button';
-import Loader from '../components/Loader';
-import { fetchQuestions } from '../utils/quizService';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchQuestions } from "../utils/quizService";
+import Header from "../components/Header";
+import Loader from "../components/Loader";
 
-const HomePage = () => {
+const HomePage = ({ theme, onToggleTheme }) => {
   const navigate = useNavigate();
+
   const [amount, setAmount] = useState(10);
-  const [difficulty, setDifficulty] = useState('');
+  const [difficulty, setDifficulty] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleStart = async () => {
-    if (amount < 1 || amount > 50) {
-      alert('اختر عدد أسئلة بين 1 و 50');
+    if (Number.isNaN(amount) || amount < 5 || amount > 30) {
+      alert("Entrez un nombre entre 5 et 30");
       return;
     }
 
     try {
       setLoading(true);
-      
-      // جلب الأسئلة من الـ API
+
       const questions = await fetchQuestions(amount, difficulty);
 
-      if (questions.length === 0) {
-        alert('لا توجد أسئلة متاحة بهذه المعايير');
-        setLoading(false);
+      if (!questions || questions.length === 0) {
+        alert("Aucune question disponible pour ces paramètres.");
         return;
       }
 
-      // الانتقال إلى صفحة الكويز مع الأسئلة
-      navigate('/quiz', {
-        state: {
-          questions: questions,
-          quizConfig: {
-            amount,
-            difficulty
-          }
-        }
+      navigate("/quiz", {
+        state: { questions, quizConfig: { amount, difficulty } },
       });
-    } catch (error) {
-      alert('خطأ في تحميل الأسئلة: ' + error.message);
+    } catch (err) {
+      navigate("/error", {
+        state: { errorMessage: err?.message || "Erreur lors du chargement des questions." },
+        replace: true,
+      });
+    } finally {
       setLoading(false);
     }
   };
 
+  // ✅ Loading screen (NOT inside the button)
   if (loading) {
-    return <Loader message="جاري تحميل الأسئلة..." />;
+    return <Loader message="Chargement des questions..." />;
   }
 
   return (
-    <div className="page home-page">
-      <div className="page-container">
-        <div className="home-card">
-          <h2>إعدادات الكويز</h2>
-          <p className="home-subtitle">اختر عدد الأسئلة ومستوى الصعوبة</p>
+    <div className="font-nunito bg-white dark:bg-slate-950 min-h-screen w-full transition-colors">
+      <div className="w-full min-h-screen flex flex-col px-5 py-8 lg:px-24 lg:py-14">
+        <Header
+          title="SportQuiz"
+          subtitle="Teste tes connaissances sportives"
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+        />
 
-          {/* عدد الأسئلة */}
-          <div className="form-group">
-            <label htmlFor="amount">عدد الأسئلة:</label>
+        <div className="mb-8">
+          <h2 className="font-black text-gray-800 dark:text-white text-2xl lg:text-5xl leading-tight mb-2">
+            Prêt à jouer ?
+          </h2>
+          <p className="text-gray-400 font-semibold text-sm lg:text-lg">
+            Configure ta partie et lance le chrono !
+          </p>
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:gap-16 gap-8">
+          <div className="flex-1">
+            <p className="font-black text-gray-800 dark:text-white text-base lg:text-xl mb-1">
+              Nombre de questions
+            </p>
+            <p className="text-gray-400 text-xs lg:text-sm font-semibold mb-3">
+              Entrez un nombre entre 5 et 30
+            </p>
             <input
-              id="amount"
               type="number"
-              min="1"
-              max="50"
+              min={5}
+              max={30}
+              placeholder="Ex : 10"
               value={amount}
-              onChange={(e) => setAmount(parseInt(e.target.value) || 10)}
-              className="form-input"
+              onChange={(e) => setAmount(parseInt(e.target.value, 10) || 5)}
+              className="w-full border-2 border-gray-200 dark:border-slate-800 rounded-2xl px-5 py-4
+                         font-black text-gray-800 dark:text-white text-lg lg:text-xl bg-gray-50 dark:bg-slate-900
+                         placeholder-gray-300 dark:placeholder-slate-500 outline-none
+                         focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-500/20
+                         focus:bg-white dark:focus:bg-slate-950 transition-all"
             />
-            <small>اختر بين 1 و 50 سؤال</small>
           </div>
 
-          {/* مستوى الصعوبة */}
-          <div className="form-group">
-            <label htmlFor="difficulty">مستوى الصعوبة:</label>
+          <div className="flex-1">
+            <p className="font-black text-gray-800 dark:text-white text-base lg:text-xl mb-1">
+              Niveau de difficulté
+            </p>
+            <p className="text-gray-400 text-xs lg:text-sm font-semibold mb-3">
+              Choisissez votre défi
+            </p>
             <select
-              id="difficulty"
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
-              className="form-select"
+              className="w-full border-2 border-gray-200 dark:border-slate-800 rounded-2xl px-5 py-4
+                         font-black text-gray-800 dark:text-white text-lg lg:text-xl bg-gray-50 dark:bg-slate-900
+                         outline-none cursor-pointer
+                         focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 dark:focus:ring-indigo-500/20
+                         focus:bg-white dark:focus:bg-slate-950 transition-all"
             >
-              <option value="">جميع المستويات</option>
-              <option value="easy">سهل</option>
-              <option value="medium">متوسط</option>
-              <option value="hard">صعب جداً</option>
+              <option value="">-- Sélectionner --</option>
+              <option value="easy">Facile — Débutant</option>
+              <option value="medium">Moyen — Équilibré</option>
+              <option value="hard">Difficile — Expert</option>
             </select>
           </div>
+        </div>
 
-          {/* زر البدء */}
-          <Button 
-            variant="primary"
+        <div className="flex-1" />
+
+        <div className="pt-8">
+          <button
             onClick={handleStart}
-            className="start-btn"
+            className="w-full py-5 rounded-2xl bg-indigo-700
+                       text-white font-black text-base lg:text-xl tracking-wide
+                      
+                       hover:bg-indigo-800 hover:-translate-y-0.5
+                       active:scale-95 transition-all"
           >
-            🚀 ابدأ الكويز
-          </Button>
-
-          {/* معلومات */}
-          <div className="home-info">
-            <h3>كيف تعمل اللعبة؟</h3>
-            <ul>
-              <li>✅ أجب على الأسئلة قبل انتهاء الوقت</li>
-              <li>⏱️ لديك 30 ثانية لكل سؤال</li>
-              <li>💡 استخدم تلميح 50/50 مرة واحدة فقط</li>
-              <li>📊 تابع تقدمك في الوقت الفعلي</li>
-              <li>🏆 شاهد نتائجك والأسئلة التي أخطأت بها</li>
-            </ul>
-          </div>
+            Lancer le Quiz
+          </button>
         </div>
       </div>
     </div>

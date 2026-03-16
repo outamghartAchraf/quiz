@@ -1,183 +1,238 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import ProgressBar from '../components/ProgressBar';
-import QuestionCard from '../components/QuestionCard';
-import ScoreBoard from '../components/ScoreBoard';
-import Timer from '../components/Timer';
-import Loader from '../components/Loader';
-import Button from '../components/Button';
-import { decodeHTML } from '../utils/quizService';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
-const QuizPage = () => {
+import Header from "../components/Header";
+import ProgressBar from "../components/ProgressBar";
+import Timer from "../components/Timer";
+import QuestionCard from "../components/QuestionCard";
+import Button from "../components/Button";
+
+const QUIZ_TIME_SECONDS = 30;
+
+const decodeHTML = (html) => {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = html;
+  return textarea.value;
+};
+
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+const QuizPage = ({ theme, onToggleTheme }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // الحصول على الأسئلة من الحالة
-  const questions = location.state?.questions || [];
+  const questionsRaw = location.state?.questions || [];
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState([]);
-  const [hintUsed, setHintUsed] = useState(false);
-  const [displayAnswers, setDisplayAnswers] = useState([]);
-  const [showFeedback, setShowFeedback] = useState(false);
+
+  const [answersLog, setAnswersLog] = useState([]);
+
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
-  // التحقق من وجود أسئلة
+  // 50/50 once per quiz
+  const [hintUsed, setHintUsed] = useState(false);
+  const [removedOptions, setRemovedOptions] = useState([]);
+
+  const [timeLeft, setTimeLeft] = useState(QUIZ_TIME_SECONDS);
+  const intervalRef = useRef(null);
+
   useEffect(() => {
-    if (!questions || questions.length === 0) {
-      navigate('/', { replace: true });
-    } else {
-      // تهيئة الأسئلة الأولى
-      const shuffled = shuffleAnswers(questions[0]);
-      setDisplayAnswers(shuffled);
+    if (!questionsRaw.length) navigate("/", { replace: true });
+  }, [questionsRaw, navigate]);
+
+  const currentQuestion = questionsRaw[currentIndex];
+
+  const questionText = currentQuestion ? decodeHTML(currentQuestion.question) : "";
+  const correctAnswer = currentQuestion ? decodeHTML(currentQuestion.correct_answer) : "";
+
+  const baseOptions = useMemo(() => {
+    if (!currentQuestion) return [];
+    if (currentQuestion.type === "boolean") return shuffle(["True", "False"]);
+
+    const correct = decodeHTML(currentQuestion.correct_answer);
+    const incorrect = (currentQuestion.incorrect_answers || []).map(decodeHTML);
+    return shuffle([correct, ...incorrect]);
+  }, [currentQuestion]);
+
+  const options = useMemo(() => {
+    if (!removedOptions.length) return baseOptions;
+    return baseOptions.filter((o) => !removedOptions.includes(o));
+  }, [baseOptions, removedOptions]);
+
+  // reset per question
+  useEffect(() => {
+    if (!currentQuestion) return;
+
+    setTimeLeft(QUIZ_TIME_SECONDS);
+    setSelectedAnswer(null);
+    setIsLocked(false);
+    setRemovedOptions([]);
+
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => setTimeLeft((t) => t - 1), 1000);
+
+    return () => intervalRef.current && clearInterval(intervalRef.current);
+  }, [currentIndex, currentQuestion]);
+
+  // time up
+  useEffect(() => {
+    if (!currentQuestion) return;
+    if (timeLeft > 0) return;
+
+    intervalRef.current && clearInterval(intervalRef.current);
+
+    if (!isLocked) {
+      setIsLocked(true);
+      setAnswersLog((prev) => [
+        ...prev,
+        { question: questionText, userAnswer: null, correctAnswer, isCorrect: false },
+      ]);
     }
-  }, [questions, navigate]);
+  }, [timeLeft, isLocked, currentQuestion, questionText, correctAnswer]);
 
-  // فك تشفير الأحرف الخاصة
-  const decodeHTMLEntity = (html) => {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = html;
-    return textarea.value;
+  const progressPercent = Math.round(((currentIndex + 1) / (questionsRaw.length || 1)) * 100);
+
+  const dashArray = 163;
+  const dashOffset = Math.round(dashArray * (1 - timeLeft / QUIZ_TIME_SECONDS));
+
+  const onSelect = (ans) => {
+    if (isLocked) return;
+    intervalRef.current && clearInterval(intervalRef.current);
+
+    setSelectedAnswer(ans);
+    setIsLocked(true);
+
+    const isCorrect = ans === correctAnswer;
+    if (isCorrect) setScore((s) => s + 1);
+
+    setAnswersLog((prev) => [
+      ...prev,
+      { question: questionText, userAnswer: ans, correctAnswer, isCorrect },
+    ]);
   };
 
-  // خلط الإجابات
-  const shuffleAnswers = (question) => {
-    const answers = [
-      decodeHTMLEntity(question.correct_answer),
-      ...question.incorrect_answers.map(a => decodeHTMLEntity(a))
-    ];
-    return answers.sort(() => Math.random() - 0.5);
-  };
+  const canUseHint = !hintUsed && !isLocked && currentQuestion?.type !== "boolean";
 
-  // خلط أي مصفوفة
-  const shuffleArray = (array) => {
-    return array.sort(() => Math.random() - 0.5);
-  };
-
-  // معالجة اختيار الإجابة
-  const handleAnswerSelect = (answer) => {
-    setSelectedAnswer(answer);
-    setShowFeedback(true);
-
-    const currentQuestion = questions[currentIndex];
-    const correctAnswer = decodeHTMLEntity(currentQuestion.correct_answer);
-    const isCorrect = answer === correctAnswer;
-
-    if (isCorrect) {
-      setScore(prev => prev + 1);
-    }
-
-    setAnswers(prev => [...prev, {
-      question: decodeHTMLEntity(currentQuestion.question),
-      userAnswer: answer,
-      correctAnswer: correctAnswer,
-      isCorrect
-    }]);
-  };
-
-  // تلميح 50/50
-  const handleHint = () => {
-    if (hintUsed) return;
-
-    const currentQuestion = questions[currentIndex];
-    const correctAnswer = decodeHTMLEntity(currentQuestion.correct_answer);
-    const incorrectAnswers = displayAnswers.filter(
-      a => a !== correctAnswer
-    );
-
-    if (incorrectAnswers.length > 2) {
-      const toRemove = shuffleArray(incorrectAnswers).slice(0, 2);
-      const filtered = displayAnswers.filter(a => !toRemove.includes(a));
-      setDisplayAnswers(filtered);
-    }
-
+  const onFifty = () => {
+    if (!canUseHint) return;
+    const wrong = baseOptions.filter((o) => o !== correctAnswer);
+    const toRemove = shuffle(wrong).slice(0, 2);
+    setRemovedOptions(toRemove);
     setHintUsed(true);
   };
 
-  // انتهاء الوقت
-  const handleTimeUp = () => {
-    if (!showFeedback) {
-      handleAnswerSelect(null);
+  const onNext = () => {
+    if (!isLocked) return;
+
+    if (currentIndex < questionsRaw.length - 1) {
+      setCurrentIndex((i) => i + 1);
+      return;
     }
+
+    const totalQuestions = questionsRaw.length;
+    const percentage = totalQuestions ? Math.round((score / totalQuestions) * 100) : 0;
+
+    navigate("/results", {
+      state: { quizData: { score, totalQuestions, answers: answersLog, percentage } },
+      replace: true,
+    });
   };
 
-  // الانتقال للسؤال التالي
-  const handleNext = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      const nextQuestion = questions[currentIndex + 1];
-      const shuffled = shuffleAnswers(nextQuestion);
-      setDisplayAnswers(shuffled);
-      setShowFeedback(false);
-      setSelectedAnswer(null);
-      setHintUsed(false);
-    } else {
-      // انتقل لصفحة النتائج
-      navigate('/results', {
-        state: {
-          quizData: {
-            score,
-            totalQuestions: questions.length,
-            answers,
-            percentage: Math.round((score / questions.length) * 100)
-          }
-        },
-        replace: true
-      });
-    }
-  };
-
-  // حالة التحميل
-  if (questions.length === 0) {
-    return <Loader message="تحضير الكويز..." />;
-  }
-
-  const currentQuestion = questions[currentIndex];
+  if (!currentQuestion) return null;
 
   return (
-    <div className="page quiz-page">
-      <div className="quiz-container">
-        {/* رأس الكويز */}
-        <div className="quiz-header">
-          <ProgressBar current={currentIndex + 1} total={questions.length} />
-          <ScoreBoard score={score} total={questions.length} />
-        </div>
-
-        {/* المؤقت */}
-        <div className="quiz-timer">
-          <Timer duration={30} onTimeUp={handleTimeUp} />
-        </div>
-
-        {/* بطاقة السؤال */}
-        <QuestionCard
-          question={{
-            text: decodeHTMLEntity(currentQuestion.question),
-            category: currentQuestion.category,
-            difficulty: currentQuestion.difficulty,
-            type: currentQuestion.type
-          }}
-          answers={displayAnswers}
-          onAnswerSelect={handleAnswerSelect}
-          onHint={handleHint}
-          hintUsed={hintUsed}
-          showFeedback={showFeedback}
-          selectedAnswer={selectedAnswer}
-          correctAnswer={decodeHTMLEntity(currentQuestion.correct_answer)}
+    <div className="font-nunito bg-white dark:bg-slate-950 min-h-screen w-full transition-colors">
+      <div className="w-full min-h-screen flex flex-col px-5 py-8 lg:px-24 lg:py-14">
+        <Header
+          title={currentQuestion.category || "Sports"}
+          subtitle={`Question ${currentIndex + 1}/${questionsRaw.length} • Score ${score}`}
+          theme={theme}
+          onToggleTheme={onToggleTheme}
+          rightSlot={
+<button
+  onClick={() => navigate("/", { replace: true })}
+  className="w-11 h-11 lg:w-14 lg:h-14 rounded-2xl bg-gray-100 dark:bg-slate-900
+             hover:bg-gray-200 dark:hover:bg-slate-800
+             flex items-center justify-center transition-colors"
+  aria-label="Back"
+  type="button"
+  title="Back"
+>
+  <i
+    className="fa-solid fa-arrow-left text-gray-700 dark:text-gray-200 text-lg lg:text-xl"
+    aria-hidden="true"
+  />
+</button>
+          }
         />
 
-        {/* زر التالي */}
-        {showFeedback && (
-          <div className="quiz-footer">
-            <Button
-              variant="primary"
-              onClick={handleNext}
-              className="next-btn"
-            >
-              {currentIndex === questions.length - 1 ? 'انهاء' : 'التالي'} →
-            </Button>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-gray-400 text-xs lg:text-sm font-semibold mb-0.5">Question</p>
+            <p className="font-black leading-none text-indigo-600 text-2xl lg:text-4xl">
+              {currentIndex + 1}
+              <span className="text-gray-400 font-semibold text-base lg:text-2xl">/{questionsRaw.length}</span>
+            </p>
           </div>
-        )}
+
+          <Timer timeLeft={timeLeft} dashArray={dashArray} dashOffset={dashOffset} />
+        </div>
+
+        <div className="mb-6 lg:mb-8">
+          <ProgressBar value={progressPercent} />
+        </div>
+
+        <QuestionCard
+          questionText={questionText}
+          options={options}
+          onSelect={onSelect}
+          isLocked={isLocked}
+          correctAnswer={correctAnswer}
+          selectedAnswer={selectedAnswer}
+        />
+
+        <div className="mt-auto grid gap-3 lg:grid-cols-[1fr_2fr] pt-4">
+          <Button
+            type="button"
+            onClick={onFifty}
+            disabled={!canUseHint}
+            className={`w-full py-4 lg:py-5 rounded-2xl font-extrabold text-base lg:text-xl tracking-wide  
+              ${canUseHint ? "bg-indigo-50 text-indigo-700 hover:bg-indigo-100 " : "bg-gray-100 text-gray-400 "}`}
+          >
+            50/50
+          </Button>
+
+<Button
+  type="button"
+  onClick={onNext}
+  disabled={!isLocked}
+  className="w-full py-4 lg:py-5 rounded-2xl bg-indigo-700 hover:bg-indigo-800
+             text-white font-extrabold text-base lg:text-xl tracking-wide
+             
+             flex items-center justify-center gap-3"
+>
+  {currentIndex === questionsRaw.length - 1 ? (
+    <>
+      <span>Finish</span>
+      <i className="fa-solid fa-flag-checkered" aria-hidden="true" />
+    </>
+  ) : (
+    <>
+      <span>Next</span>
+      <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+    </>
+  )}
+</Button>
+        </div>
       </div>
     </div>
   );

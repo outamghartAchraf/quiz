@@ -1,13 +1,9 @@
-import React from 'react';
+import React from "react";
 
-const ScoreBoard = ({ score, total }) => {
+const ScoreBoard = ({ score }) => {
   return (
-    <div className="scoreboard">
-      <div className="score-display">
-        <span className="score-label">Score</span>
-        <span className="score-value">{score}</span>
-        <span className="score-total">/ {total}</span>
-      </div>
+    <div className="font-black text-indigo-600">
+      Score: <span className="text-gray-800 dark:text-white">{score}</span>
     </div>
   );
 };

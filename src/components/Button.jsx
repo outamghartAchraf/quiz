@@ -1,18 +1,10 @@
-import React from 'react';
+import React from "react";
 
-const Button = ({ 
-  children, 
-  onClick, 
-  variant = 'primary', 
-  disabled = false,
-  className = '',
-  ...props 
-}) => {
+const Button = ({ children, className = "", disabled, ...props }) => {
   return (
     <button
-      className={`btn btn-${variant} ${className}`}
-      onClick={onClick}
       disabled={disabled}
+      className={`active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed ${className}`}
       {...props}
     >
       {children}

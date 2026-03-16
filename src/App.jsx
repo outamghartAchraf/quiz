@@ -1,48 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import HomePage from './pages/HomePage';
-import QuizPage from './pages/QuizPage';
-import ResultPage from './pages/ResultPage';
-import ErrorPage from './pages/ErrorPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ThemeToggle from './components/ThemeToggle';
-import './styles.css';
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import HomePage from "./pages/HomePage";
+import QuizPage from "./pages/QuizPage";
+import ResultPage from "./pages/ResultPage";
+import ErrorPage from "./pages/ErrorPage";
+import NotFoundPage from "./pages/NotFoundPage";
+
+const THEME_KEY = "sport-quiz-theme";
 
 const App = () => {
-  const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('sport-quiz-theme');
-    return savedTheme || 'light';
-  });
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "light");
 
   useEffect(() => {
-    localStorage.setItem('sport-quiz-theme', theme);
+    const root = document.documentElement; // <html>
+    if (theme === "dark") root.classList.add("dark");
+    else root.classList.remove("dark");
+    localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
 
   return (
     <Router>
-      <div className={`app ${theme}`}>
-        <header className="app-header">
-          <div className="header-content">
-            <h1 className="app-title">🏆 SportQuiz Master</h1>
-            <p className="app-subtitle">Le Défi des Athlètes</p>
-          </div>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} />
-        </header>
-
-        <main className="app-main">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/quiz" element={<QuizPage />} />
-            <Route path="/results" element={<ResultPage />} />
-            <Route path="/error" element={<ErrorPage />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </main>
-      </div>
+      <Routes>
+        <Route path="/" element={<HomePage theme={theme} onToggleTheme={toggleTheme} />} />
+        <Route path="/quiz" element={<QuizPage theme={theme} onToggleTheme={toggleTheme} />} />
+        <Route path="/results" element={<ResultPage theme={theme} onToggleTheme={toggleTheme} />} />
+        <Route path="/error" element={<ErrorPage theme={theme} onToggleTheme={toggleTheme} />} />
+        <Route path="*" element={<NotFoundPage theme={theme} onToggleTheme={toggleTheme} />} />
+      </Routes>
     </Router>
   );
 };
