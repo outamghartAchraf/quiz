@@ -12,7 +12,7 @@ const NotFoundPage = ({ theme, onToggleTheme }) => {
 
         <div className="bg-gray-50 dark:bg-slate-900 border-2 border-gray-200 dark:border-slate-800 rounded-2xl p-6">
           <p className="font-black text-gray-800 dark:text-white mb-2">404</p>
-          <p className="text-gray-500 font-semibold">هذه الصفحة غير موجودة.</p>
+          <p className="text-gray-500 font-semibold">Page non trouvée</p>
         </div>
 
         <div className="flex-1" />

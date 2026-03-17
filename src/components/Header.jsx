@@ -11,8 +11,8 @@ const Header = ({
   return (
     <div className="flex items-center justify-between gap-4 mb-8 w-full">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200/60">
-          {/* Font Awesome icon بدل emoji */}
+        <div className="w-11 h-11 lg:w-14 lg:h-14 rounded-2xl bg-indigo-600 flex items-center justify-center  ">
+         
           <i className="fa-solid fa-medal text-white text-xl lg:text-2xl" aria-hidden="true" />
         </div>
 

@@ -40,7 +40,7 @@ const HomePage = ({ theme, onToggleTheme }) => {
     }
   };
 
-  // ✅ Loading screen (NOT inside the button)
+   
   if (loading) {
     return <Loader message="Chargement des questions..." />;
   }
@@ -57,10 +57,10 @@ const HomePage = ({ theme, onToggleTheme }) => {
 
         <div className="mb-8">
           <h2 className="font-black text-gray-800 dark:text-white text-2xl lg:text-5xl leading-tight mb-2">
-            Prêt à jouer ?
+            Start Quiz 
           </h2>
           <p className="text-gray-400 font-semibold text-sm lg:text-lg">
-            Configure ta partie et lance le chrono !
+          
           </p>
         </div>
 

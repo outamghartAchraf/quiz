@@ -6,6 +6,7 @@ import QuizPage from "./pages/QuizPage";
 import ResultPage from "./pages/ResultPage";
 import ErrorPage from "./pages/ErrorPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import ReviewPage from "./pages/ReviewPage";
 
 const THEME_KEY = "sport-quiz-theme";
 
@@ -13,7 +14,7 @@ const App = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "light");
 
   useEffect(() => {
-    const root = document.documentElement; // <html>
+    const root = document.documentElement;  
     if (theme === "dark") root.classList.add("dark");
     else root.classList.remove("dark");
     localStorage.setItem(THEME_KEY, theme);
@@ -29,6 +30,7 @@ const App = () => {
         <Route path="/results" element={<ResultPage theme={theme} onToggleTheme={toggleTheme} />} />
         <Route path="/error" element={<ErrorPage theme={theme} onToggleTheme={toggleTheme} />} />
         <Route path="*" element={<NotFoundPage theme={theme} onToggleTheme={toggleTheme} />} />
+        <Route path="/review" element={<ReviewPage theme={theme} onToggleTheme={toggleTheme} />} />
       </Routes>
     </Router>
   );
